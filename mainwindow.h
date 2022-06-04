@@ -2,7 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-
+#include <QScrollArea>
+#include <canvasarea.h>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -17,5 +18,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    QScrollArea *uiScrollArea;
+    CanvasArea *uiCanvasArea;
 };
 #endif // MAINWINDOW_H

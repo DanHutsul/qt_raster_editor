@@ -26,15 +26,19 @@ protected:
     void canvasDrawCurve(QPainter *painter);
     void canvasDrawRectangle(QPainter *painter);
     void canvasDrawCustomShape(QPainter *painter);
+    void canvasSelectRectangleArea(QPainter *painter);
+    void canvasMoveBufferImage(QPainter *painter);
+    void canvasDrawBucket(QPainter *painter);
 
-
+    void floodFill(QPoint point, QRgb oldColor, QRgb newColor);
 
     //void canvasDrawPolygon(QPainter *painter, int n);
     void canvasDrawCircle(bool updateFlag = false);
+    bool validPoint(QPoint point);
 private:
     //QPainter canvasPainter;
     QImage *canvasImage;
-    QImage *canvasImageBackup;
+    QImage *canvasImageBackup; // Unused?
     //QString *fileName;
     int canvasMode;
     //std::array<std::function<void()>, 1> canvasDrawFunctions = {&canvasDrawPencil};
@@ -59,6 +63,9 @@ private:
     QPainter *canvasPainter;
     QPoint canvasPenPointStart;
     QPoint canvasPenPointEnd;
+
+    QImage canvasImageCopyBuffer;
+    QPoint canvasImageCopyPoint;
 };
 
 #endif // CANVASAREA_H

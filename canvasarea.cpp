@@ -1,6 +1,7 @@
 #include "canvasarea.h"
 #include <math.h>
 #include <iostream>
+#include <queue>
 CanvasArea::CanvasArea(QWidget *parent)
     : QWidget{parent}
 {
@@ -11,7 +12,7 @@ CanvasArea::CanvasArea(QWidget *parent)
                                     tr("Image Files (*.png *.jpg *.bmp)"));
     canvasImage = new QImage(fileName);
     setMinimumSize(canvasImage->size());
-    canvasMode = 6; // Remove this, handle through
+    canvasMode = 9; // Remove this, handle through
     canvasPrimaryColor = Qt::black;
     canvasSecondaryColor = Qt::white;
     canvasPainter = new QPainter(canvasImage);
@@ -133,6 +134,135 @@ void CanvasArea::canvasDrawCustomShape(QPainter *painter) {
     }*/
 }
 
+void CanvasArea::canvasSelectRectangleArea(QPainter *painter) {
+    const int scale = 3;
+    QPen pen;
+    pen.setWidth(1);
+
+    QPolygon polygon;
+    polygon << canvasPenPointStart << QPoint(canvasPenPointStart.x(), canvasPenPointEnd.y()) << canvasPenPointEnd << QPoint(canvasPenPointEnd.x(), canvasPenPointStart.y());
+
+    if (canvasMouseReleased) {
+        canvasMode = 8;
+        canvasImageCopyPoint = polygon.boundingRect().topLeft();//canvasPenPointStart;
+        canvasImageCopyBuffer = canvasImage->copy(polygon.boundingRect());
+    }
+
+    pen.setColor(Qt::white);
+    pen.setDashPattern({1.0 * scale, 1.0 * scale});
+    painter->setPen(pen); // TODO More Variables
+
+    painter->drawPolygon(polygon, Qt::OddEvenFill);
+
+    pen.setColor(Qt::black);
+    pen.setDashOffset(1.0 * scale);
+    painter->setPen(pen); // TODO More Variables
+
+    painter->drawPolygon(polygon, Qt::OddEvenFill);
+
+}
+
+void CanvasArea::canvasMoveBufferImage(QPainter *painter) {
+    int offsetx = canvasPenPointStart.x() - canvasImageCopyPoint.x();
+    int offsety = canvasPenPointStart.y() - canvasImageCopyPoint.y();
+
+    if (offsetx < 0 || offsetx > canvasImageCopyBuffer.width() || offsety < 0 || offsety > canvasImageCopyBuffer.height() ) {
+        //std::cout << "Offset => " << offsetx << " " << offsety << std::endl;
+        //std::cout << "Width = " << canvasImageCopyBuffer.width() << "\nHeight = " << canvasImageCopyBuffer.height() << std::endl;
+        canvasMode = 7;
+    }
+    painter->drawImage(canvasImageCopyPoint + canvasPenPointEnd - canvasPenPointStart, canvasImageCopyBuffer);
+
+    QPen pen;
+    pen.setWidth(1);
+
+    QPolygon polygon;
+    pen.setColor(Qt::white);
+    pen.setDashPattern({1.0, 1.0});
+    painter->setPen(pen); // TODO More Variables
+
+    painter->drawRect(canvasImageCopyPoint.x() + canvasPenPointEnd.x() - canvasPenPointStart.x(), canvasImageCopyPoint.y() + canvasPenPointEnd.y() - canvasPenPointStart.y(),
+                      canvasImageCopyBuffer.width(), canvasImageCopyBuffer.height());
+
+    pen.setDashOffset(1.0);
+    pen.setColor(Qt::black);
+    painter->drawRect(canvasImageCopyPoint.x() + canvasPenPointEnd.x() - canvasPenPointStart.x(), canvasImageCopyPoint.y() + canvasPenPointEnd.y() - canvasPenPointStart.y(),
+                      canvasImageCopyBuffer.width(), canvasImageCopyBuffer.height());
+
+    if (canvasMouseReleased) {
+        canvasImageCopyPoint += canvasPenPointEnd - canvasPenPointStart;
+    }
+}
+
+bool CanvasArea::validPoint(QPoint point) {
+    return point.x() >= 0 && point.y() >= 0 && point.x() < canvasImage->width() && point.x() < canvasImage->height();
+}
+
+void CanvasArea::canvasDrawBucket(QPainter *painter) {
+    if (!canvasMouseReleased) return;
+    std::queue<QPoint> points;
+    points.push(canvasPenPointEnd);
+
+    QRgb oldColor = canvasImage->pixel(canvasPenPointEnd);
+    QRgb newColor = canvasPrimaryColor.rgb();
+
+    if (oldColor == newColor) {
+        return;
+    }
+    std::cout << "Width = " << canvasImage->width() << " Height = " << canvasImage->height() << std::endl;
+
+    while (!points.empty()) {
+        QPoint origin = points.front();
+        points.pop();
+        int lx = origin.x() - 1;
+        int rx = origin.x();
+        while (lx >= 0 && canvasImage->pixel(QPoint(lx, origin.y())) == oldColor) {
+            canvasImage->setPixelColor(QPoint(lx, origin.y()), newColor);
+            lx--;
+        }
+
+
+        while (rx < canvasImage->width() && canvasImage->pixel(QPoint(rx, origin.y())) == oldColor) {
+            canvasImage->setPixelColor(QPoint(rx, origin.y()), newColor);
+            rx++;
+        }
+
+        bool added = false;
+        if (origin.y()>0) {
+            for (int i = lx+1; i < rx; i++) {
+                if (canvasImage->pixel(QPoint(i, origin.y()-1)) != oldColor) {
+                    added = false;
+                } else if (!added) {
+                    points.push(QPoint(i, origin.y()-1));
+                }
+            }
+        }
+        if (origin.y()+1 < canvasImage->height()) {
+            added = false;
+            for (int i = lx+1; i < rx; i++) {
+                if (canvasImage->pixel(QPoint(i, origin.y()+1)) != oldColor) {
+                    added = false;
+                } else if (!added) {
+                    points.push(QPoint(i, origin.y()+1));
+                }
+            }
+        }
+    }
+}
+
+/*void CanvasArea::floodFill(QPoint point, QRgb oldColor, QRgb newColor) {
+    if (point.x() < 0 || point.y() < 0 || point.x() >= canvasImage->width() || point.y() >= canvasImage->height()) return;
+
+    if (canvasImage->pixel(point) != oldColor || canvasImage->pixel(point) == newColor) {return;}
+
+    canvasImage->setPixelColor(point, newColor);
+    //update(QRect(point, point));
+    floodFill(QPoint(point.x() - 1, point.y()), oldColor, newColor);
+    floodFill(QPoint(point.x() + 1, point.y()), oldColor, newColor);
+    floodFill(QPoint(point.x(), point.y() - 1), oldColor, newColor);
+    floodFill(QPoint(point.x(), point.y() + 1), oldColor, newColor);
+}*/
+
 void CanvasArea::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.drawImage(0, 0, *canvasImage);
@@ -165,6 +295,27 @@ void CanvasArea::paintEvent(QPaintEvent* event) {
                     //update(canvasCustomShapePolygon.boundingRect().normalized().adjusted(-rad, -rad, +rad, +rad));
                 } else canvasDrawCustomShape(&painter);
 
+                break;
+        case 7: if (canvasMouseReleased) {
+                    canvasSelectRectangleArea(&painter);
+                } else canvasSelectRectangleArea(&painter);
+                rad = (painter.pen().width() / 2) + 4;
+                //update(QRect(canvasPenPointStart, canvasPenPointEnd).normalized().adjusted(-rad, -rad, +rad, +rad));
+                break;
+        case 8: if (canvasMouseReleased) {
+                    canvasMoveBufferImage(&painter);
+                } else canvasMoveBufferImage(&painter);
+                //rad = (painter.pen().width() / 2) + 4;
+                if (canvasMode == 7) {
+                    //canvasImageCopyBuffer.fill(Qt::black);
+                    canvasPainter->drawImage(canvasImageCopyPoint + canvasPenPointEnd - canvasPenPointStart, canvasImageCopyBuffer);
+                    update(canvasImageCopyBuffer.rect());
+                    //update(QRect(canvasImageCopyPoint, QPoint(canvasImageCopyPoint.x() + canvasImageCopyBuffer.width(), canvasImageCopyPoint.y() + canvasImageCopyBuffer.height())).normalized().adjusted(-rad, -rad, +rad, +rad));
+                }
+                break;
+        case 9:
+                canvasDrawBucket(canvasPainter);
+                update();
                 break;
         }
 

@@ -6,24 +6,19 @@ CanvasArea::CanvasArea(QWidget *parent)
     : QWidget{parent}
 {
     //QPainter painter(this);
-    QString fileName = QFileDialog::getOpenFileName(this, //Move this to separate function
-                                    tr("Open Image"),
-                                    QDir::currentPath(),
-                                    tr("Image Files (*.png *.jpg *.bmp)"));
-    canvasImage = new QImage(fileName);
-    //*canvasImage = canvasImage->scaled(canvasImage->size()/5, Qt::KeepAspectRatio); // Use to scale //To export bring to default size // Multiply pen by scale
+    //TODO
+    canvasImage = new QImage();
     setMinimumSize(canvasImage->size());
-    canvasMode = 9; // Remove this, handle through
+    canvasMode = 0; // Remove this, handle through
     canvasPrimaryColor = Qt::black;
     canvasSecondaryColor = Qt::white;
     canvasPainter = new QPainter(canvasImage);
     canvasMouseReleased = false;
     canvasCurvePath = new QPainterPath();
-    //canvasPainter->setPen(QPen(canvasPrimaryColor, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
 }
 
 void CanvasArea::canvasDrawPencil(QPainter *painter) {
-    painter->setPen(QPen(canvasPrimaryColor, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
+    painter->setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
     painter->drawLine(canvasPenPointStart, canvasPenPointEnd);
     //int rad = (painter->pen().width() / 2) + 2;
     canvasPenPointStart = canvasPenPointEnd;
@@ -32,13 +27,13 @@ void CanvasArea::canvasDrawPencil(QPainter *painter) {
 }
 
 void CanvasArea::canvasDrawEraser(QPainter *painter) {
-    painter->setPen(QPen(canvasSecondaryColor, 5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
+    painter->setPen(QPen(canvasSecondaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
     painter->drawLine(canvasPenPointStart, canvasPenPointEnd);
     canvasPenPointStart = canvasPenPointEnd;
 }
 
 void CanvasArea::canvasDrawLine(QPainter *painter) {
-    painter->setPen(QPen(canvasPrimaryColor, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter->setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter->drawLine(canvasPenPointStart, canvasPenPointEnd);
 }
 
@@ -76,14 +71,23 @@ void CanvasArea::canvasDrawCurve(QPainter *painter) { //TODO clear path
         }
     }
     if (canvasMouseReleased) canvasCurvePathPoints++;
-    painter->setPen(QPen(canvasPrimaryColor, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter->setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter->drawPath(*canvasCurvePath);
 }
 
 void CanvasArea::canvasDrawRectangle(QPainter *painter) {
-    painter->setPen(QPen(canvasPrimaryColor, 5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
+    painter->setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
     QPolygon polygon;
     polygon << canvasPenPointStart << QPoint(canvasPenPointStart.x(), canvasPenPointEnd.y()) << canvasPenPointEnd << QPoint(canvasPenPointEnd.x(), canvasPenPointStart.y());
+
+    if (canvasFill) {
+        QBrush brush;
+        brush.setColor(canvasSecondaryColor);
+        brush.setStyle(Qt::SolidPattern);
+        QPainterPath path;
+        path.addPolygon(polygon);
+        painter->fillPath(path, brush);
+    }
     painter->drawPolygon(polygon, Qt::OddEvenFill); // Add fill options
 }
 
@@ -96,11 +100,11 @@ void CanvasArea::canvasDrawCustomShape(QPainter *painter) {
         else canvasCustomShapePolygonLooped = false;
     }
     int rad = (painter->pen().width() / 2) + 4;
-    painter->setPen(QPen(canvasPrimaryColor, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
+    painter->setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin)); // TODO More Variables
     if (canvasCustomShapePolygon.empty()) {
         canvasCustomShapePolygon << canvasPenPointStart << canvasPenPointEnd;
     } else {
-        if (abs(canvasCustomShapePolygon.point(0).x() - canvasPenPointEnd.x()) < 3 && abs(canvasCustomShapePolygon.point(0).y() - canvasPenPointEnd.y()) < 3 && canvasMouseReleased) {
+        if (abs(canvasCustomShapePolygon.point(0).x() - canvasPenPointEnd.x()) < 3 + canvasBrushSize && abs(canvasCustomShapePolygon.point(0).y() - canvasPenPointEnd.y()) < 3 + canvasBrushSize && canvasMouseReleased) {
             canvasCustomShapePolygonLooped = true;
         } else {
             canvasCustomShapePolygon << canvasPenPointEnd;
@@ -109,6 +113,15 @@ void CanvasArea::canvasDrawCustomShape(QPainter *painter) {
 
 
     if (canvasCustomShapePolygonLooped) {
+        canvasPainter->setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        if (canvasFill) {
+            QBrush brush;
+            brush.setColor(canvasSecondaryColor);
+            brush.setStyle(Qt::SolidPattern);
+            QPainterPath path;
+            path.addPolygon(canvasCustomShapePolygon);
+            canvasPainter->fillPath(path, brush);
+        }
         canvasPainter->drawPolygon(canvasCustomShapePolygon, Qt::OddEvenFill);
         update(canvasCustomShapePolygon.boundingRect().normalized().adjusted(-rad, -rad, +rad, +rad));
         canvasCustomShapePolygon.clear();
@@ -153,8 +166,6 @@ void CanvasArea::canvasMoveBufferImage(QPainter *painter) {
     int offsety = canvasPenPointStart.y() - canvasImageCopyPoint.y();
 
     if (offsetx < 0 || offsetx > canvasImageCopyBuffer.width() || offsety < 0 || offsety > canvasImageCopyBuffer.height() ) {
-        //std::cout << "Offset => " << offsetx << " " << offsety << std::endl;
-        //std::cout << "Width = " << canvasImageCopyBuffer.width() << "\nHeight = " << canvasImageCopyBuffer.height() << std::endl;
         canvasMode = 7;
     }
     painter->drawImage(canvasImageCopyPoint + canvasPenPointEnd - canvasPenPointStart, canvasImageCopyBuffer);
@@ -236,6 +247,17 @@ void CanvasArea::canvasDrawBucket(QPainter *painter) {
     }
 }
 
+void CanvasArea::canvasChangeCursor() {
+    if (canvasMode == 1) {
+        QPixmap cursor = QPixmap(canvasBrushSize, canvasBrushSize);
+        setCursor(QCursor(cursor, 0, 0));
+    } else if (canvasMode == 3 || canvasMode == 4 || canvasMode == 5 || canvasMode == 6 || canvasMode == 7) {
+        setCursor(Qt::CrossCursor);
+    } else {
+        setCursor(Qt::ArrowCursor);
+    }
+}
+
 void CanvasArea::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     //painter.scale(2,2);
@@ -243,7 +265,7 @@ void CanvasArea::paintEvent(QPaintEvent* event) {
     //setMinimumSize(canvasImage->size());
     painter.drawImage(0, 0, *canvasImage);
 
-    painter.setPen(QPen(canvasPrimaryColor, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    //painter.setPen(QPen(canvasPrimaryColor, canvasBrushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     int rad;
     if (canvasMouseEnabled) {
         switch(canvasMode) {
@@ -330,13 +352,11 @@ void CanvasArea::mouseReleaseEvent(QMouseEvent* event) {
     update();
 }
 
-
-
-
 void CanvasArea::setMode(int value) {
     std::cout << "CHANGED MODE TO " << value << std::endl;
     if (value != canvasMode) {
         canvasMode = value;
+        canvasChangeCursor();
         //update();
         emit canvasModeChanged(value); // Needs a *clear all* function
         canvasCustomShapePolygon.clear();
@@ -367,4 +387,45 @@ void CanvasArea::setBrushSize(int i) {
 
 void CanvasArea::changeFill() {
     canvasFill = !canvasFill;
+    std::cout << "New canvas Fill = " << canvasFill << std::endl;
+}
+
+void CanvasArea::openNewImage() {
+    QString fileName = QFileDialog::getOpenFileName(this, //Move this to separate function
+                                    tr("Open Image"),
+                                    QDir::currentPath(),
+                                    tr("Image Files (*.png *.jpg *.bmp)"));
+    if (!fileName.isEmpty()) {
+        //canvasImage
+        canvasImage = new QImage(fileName);
+        setMinimumSize(canvasImage->size());
+        canvasMode = 0; // Remove this, handle through
+        canvasPrimaryColor = Qt::black;
+        canvasSecondaryColor = Qt::white;
+        canvasPainter = new QPainter(canvasImage);
+        canvasMouseReleased = false;
+        canvasCurvePath = new QPainterPath();
+    }
+}
+
+void CanvasArea::newBlankImage(int width, int height) {
+    canvasImage = new QImage(100, 100, QImage::Format_ARGB32_Premultiplied);
+    canvasImage->fill(Qt::white);
+    setMinimumSize(canvasImage->size());
+    canvasMode = 0; // Remove this, handle through
+    canvasPrimaryColor = Qt::black;
+    canvasSecondaryColor = Qt::white;
+    canvasPainter = new QPainter(canvasImage);
+    canvasMouseReleased = false;
+    canvasCurvePath = new QPainterPath();
+}
+
+void CanvasArea::saveImage() {
+    QString fileName = QFileDialog::getSaveFileName(this, //Move this to separate function
+                                    tr("Save Image"),
+                                    QDir::currentPath(),
+                                    tr("Image Files (*.png *.jpg *.bmp)"));
+    if (!fileName.isEmpty()) {
+        canvasImage->save(fileName);
+    }
 }

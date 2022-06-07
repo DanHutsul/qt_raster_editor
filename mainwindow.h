@@ -8,6 +8,8 @@
 #include <canvasarea.h>
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QInputDialog>
+#include <QSpinBox>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -21,17 +23,20 @@ public:
     ~MainWindow();
 protected:
     void createToolbar();
+    void scaleCanvas(qreal value);
 private:
     Ui::MainWindow *ui;
     //QScrollArea *uiScrollArea;
     CanvasArea *uiCanvasArea;
     QListWidget *toolbarButtons;
+    //QInputDialog *brushSizeInput;
+    QSpinBox *brushSizeInput;
     QSignalMapper *signalMapper;
     QPushButton *buttonPrimaryColor;
     QPushButton *buttonSecondaryColor;
-    QSlider *brushSizeSlider;
-
+    //QSlider *brushSizeSlider;
     QGraphicsScene *qGScene;
     QGraphicsView *qGView;
+    qreal canvasScale = 1;
 };
 #endif // MAINWINDOW_H

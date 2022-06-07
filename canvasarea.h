@@ -8,6 +8,7 @@
 #include <QMouseEvent>
 #include <QPainterPath>
 #include <QColorDialog>
+#include <QRect>
 class CanvasArea : public QWidget
 {
     Q_OBJECT
@@ -20,6 +21,9 @@ public:
 public slots:
     void setMode(int value);
     void changeFill();
+    void openNewImage();
+    void newBlankImage(int width, int height);
+    void saveImage();
 signals:
     void canvasModeChanged(int newValue);
     void canvasBrushChanged(int newValue);
@@ -37,9 +41,8 @@ protected:
     void canvasSelectRectangleArea(QPainter *painter);
     void canvasMoveBufferImage(QPainter *painter);
     void canvasDrawBucket(QPainter *painter);
-
-    void floodFill(QPoint point, QRgb oldColor, QRgb newColor);
-
+    //void floodFill(QPoint point, QRgb oldColor, QRgb newColor);
+    void canvasChangeCursor();
     //void canvasDrawPolygon(QPainter *painter, int n);
     void canvasDrawCircle(bool updateFlag = false);
     bool validPoint(QPoint point);
@@ -72,8 +75,7 @@ private:
     QPoint canvasPenPointStart;
     QPoint canvasPenPointEnd;
 
-    int canvasBrushSize;
-    int canvasScale;
+    int canvasBrushSize = 1;
 
     QImage canvasImageCopyBuffer;
     QPoint canvasImageCopyPoint;

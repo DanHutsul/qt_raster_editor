@@ -9,6 +9,7 @@
 #include <QSignalMapper>
 #include <iostream>
 #include <QGraphicsScene>
+#include <QInputDialog>
 //TODO update qgscene on update
 
 MainWindow::MainWindow(QWidget *parent)
@@ -19,29 +20,42 @@ MainWindow::MainWindow(QWidget *parent)
     uiCanvasArea = new CanvasArea();
     qGScene = new QGraphicsScene(this);
 
-    //qGScene->setSceneRect(uiCanvasArea->rect());
     qGScene->addWidget(uiCanvasArea);
     qGView = new QGraphicsView(this);
     qGView->setStyleSheet("background: transparent");
-    //qGView->scale(2, 2);
-    //qGView->setSceneRect(uiCanvasArea->rect());
-
-    /*uiScrollArea = new QScrollArea(this);
-
-    uiScrollArea->setBackgroundRole(QPalette::Dark);
-    uiScrollArea->setWidget(uiCanvasArea);
-    uiScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    uiScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    uiScrollArea->setWidgetResizable(false);
-    uiScrollArea->setVisible(true);*/
 
     uiCanvasArea->setFixedWidth(uiCanvasArea->width());
     uiCanvasArea->setFixedHeight(uiCanvasArea->height());
 
-    //setCentralWidget(uiScrollArea);
     createToolbar();
     qGView->setScene(qGScene);
     setCentralWidget(qGView);
+
+    QMenu *fileMenu = new QMenu();
+    fileMenu->addAction("New File", [=]{
+        bool ok;
+        int width = QInputDialog::getInt(this, tr("QInputDialog::getInt()"),
+                                             tr("Width:"), 100, 1, 10000, 1, &ok);
+        if(!ok) return;
+        int height = QInputDialog::getInt(this, tr("QInputDialog::getInt()"),
+                                             tr("Height:"), 100, 1, 10000, 1, &ok);
+        if(ok) {
+            uiCanvasArea->newBlankImage(width, height);
+        }
+        uiCanvasArea->setFixedWidth(uiCanvasArea->width());
+        uiCanvasArea->setFixedHeight(uiCanvasArea->height());
+    });
+    fileMenu->addAction("Open File", [=]{
+        uiCanvasArea->openNewImage();
+        uiCanvasArea->setFixedWidth(uiCanvasArea->width());
+        uiCanvasArea->setFixedHeight(uiCanvasArea->height());
+    });
+    fileMenu->addAction("Save File", [=]{
+        uiCanvasArea->saveImage();
+    });
+    fileMenu->setTitle("File");
+    ui->menubar->addMenu(fileMenu);
+
     show();
 }
 
@@ -50,8 +64,6 @@ void MainWindow::createToolbar() {
     dock->setFeatures(dock->features() & ~QDockWidget::DockWidgetClosable);
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dock->setFixedWidth(100);
-    //toolbarButtons = new QListWidget(dock);
-
     signalMapper = new QSignalMapper(this);
 
     QGroupBox *groupBox = new QGroupBox(tr(""));
@@ -147,16 +159,6 @@ void MainWindow::createToolbar() {
     buttonLayout->setVerticalSpacing(10);
     buttonLayout->setHorizontalSpacing(10);
     groupBox->setLayout(buttonLayout);
-    /*QButtonGroup *buttonGroup = new QButtonGroup();
-    buttonGroup->addButton(buttonPencil);
-    buttonGroup->addButton(buttonEraser);
-    buttonGroup->addButton(buttonLine);
-    buttonGroup->addButton(buttonCurve);
-    buttonGroup->addButton(buttonRectangle);
-    buttonGroup->addButton(buttonShape);
-    buttonGroup->addButton(buttonSelectArea);
-    buttonGroup->addButton(buttonBucket);*/
-    //groupBox->setLayout(buttonGroup);
 
     dock->setWidget(groupBox);
     //toolbarButtons->addItems()
@@ -209,31 +211,48 @@ void MainWindow::createToolbar() {
     buttonColorLayout->addWidget(buttonPrimaryColor, 0, 0);
     buttonColorLayout->addWidget(buttonSecondaryColor, 0, 1);
 
+    brushSizeInput = new QSpinBox();
+    brushSizeInput->setFixedWidth(50);
+    brushSizeInput->setFixedHeight(25);
+    brushSizeInput->setMinimum(1);
+    connect(brushSizeInput, &QSpinBox::valueChanged, [=]{uiCanvasArea->setBrushSize(brushSizeInput->value());});
+    buttonColorLayout->addWidget(brushSizeInput, 1, 0);
 
-    brushSizeSlider = new QSlider(Qt::Vertical);
-    brushSizeSlider->setFocusPolicy(Qt::StrongFocus);
-    brushSizeSlider->setTickPosition(QSlider::TicksBothSides);
-    brushSizeSlider->setTickInterval(10);
-    brushSizeSlider->setSingleStep(1);
-    connect(brushSizeSlider, &QSlider::valueChanged, [=]{uiCanvasArea->setBrushSize(brushSizeSlider->value());});
-    buttonColorLayout->addWidget(brushSizeSlider, 1, 0);
-
-    QPushButton *buttonFill = new QPushButton("F", this);
+    QPushButton *buttonFill = new QPushButton("?", this);
     buttonFill->setCheckable(true);
     buttonFill->setFixedWidth(25);
     buttonFill->setFixedHeight(25);
-    connect(buttonBucket, &QPushButton::released, [=]{
+    connect(buttonFill, &QPushButton::released, [=]{
         uiCanvasArea->changeFill();
     });
     buttonColorLayout->addWidget(buttonFill, 1, 1);
+
+    QPushButton *buttonZoomIn = new QPushButton("+", this);
+    buttonZoomIn->setFixedWidth(25);
+    buttonZoomIn->setFixedHeight(25);
+    connect(buttonZoomIn, &QPushButton::released, [=]{
+        scaleCanvas(2);
+    });
+    buttonColorLayout->addWidget(buttonZoomIn, 2, 0);
+
+    QPushButton *buttonZoomOut = new QPushButton("-", this);
+    buttonZoomOut->setFixedWidth(25);
+    buttonZoomOut->setFixedHeight(25);
+    connect(buttonZoomOut, &QPushButton::released, [=]{
+        scaleCanvas(0.5);
+    });
+    buttonColorLayout->addWidget(buttonZoomOut, 2, 1);
 
     groupColorBox->setLayout(buttonColorLayout);
 
     colorDock->setWidget(groupColorBox);
     addDockWidget(Qt::RightDockWidgetArea, colorDock);
+}
 
-
-
+void MainWindow::scaleCanvas(qreal value) {
+    qGView->scale(value, value);
+    uiCanvasArea->update();
+    update();
 }
 
 MainWindow::~MainWindow()

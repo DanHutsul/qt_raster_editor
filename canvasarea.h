@@ -7,14 +7,22 @@
 #include <QFileDialog>
 #include <QMouseEvent>
 #include <QPainterPath>
+#include <QColorDialog>
 class CanvasArea : public QWidget
 {
     Q_OBJECT
 public:
     explicit CanvasArea(QWidget *parent = nullptr);
-
+    QColor getCanvasPrimaryColor() {return canvasPrimaryColor;}
+    QColor getCanvasSecondaryColor() {return canvasSecondaryColor;}
+    void setColor(int i);
+    void setBrushSize(int i);
+public slots:
+    void setMode(int value);
+    void changeFill();
 signals:
-
+    void canvasModeChanged(int newValue);
+    void canvasBrushChanged(int newValue);
 protected:
     void paintEvent(QPaintEvent* event);
     void mousePressEvent(QMouseEvent* event);
@@ -64,8 +72,13 @@ private:
     QPoint canvasPenPointStart;
     QPoint canvasPenPointEnd;
 
+    int canvasBrushSize;
+    int canvasScale;
+
     QImage canvasImageCopyBuffer;
     QPoint canvasImageCopyPoint;
+
+    bool canvasFill = false;
 };
 
 #endif // CANVASAREA_H

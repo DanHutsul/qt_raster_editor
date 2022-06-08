@@ -44,11 +44,13 @@ MainWindow::MainWindow(QWidget *parent)
         }
         uiCanvasArea->setFixedWidth(uiCanvasArea->width());
         uiCanvasArea->setFixedHeight(uiCanvasArea->height());
+        update();
     });
     fileMenu->addAction("Open File", [=]{
         uiCanvasArea->openNewImage();
         uiCanvasArea->setFixedWidth(uiCanvasArea->width());
         uiCanvasArea->setFixedHeight(uiCanvasArea->height());
+        update();
     });
     fileMenu->addAction("Save File", [=]{
         uiCanvasArea->saveImage();
@@ -232,6 +234,8 @@ void MainWindow::createToolbar() {
     buttonZoomIn->setFixedHeight(25);
     connect(buttonZoomIn, &QPushButton::released, [=]{
         scaleCanvas(2);
+        uiCanvasArea->setFixedWidth(uiCanvasArea->width());
+        uiCanvasArea->setFixedHeight(uiCanvasArea->height());
     });
     buttonColorLayout->addWidget(buttonZoomIn, 2, 0);
 
@@ -240,6 +244,8 @@ void MainWindow::createToolbar() {
     buttonZoomOut->setFixedHeight(25);
     connect(buttonZoomOut, &QPushButton::released, [=]{
         scaleCanvas(0.5);
+        uiCanvasArea->setFixedWidth(uiCanvasArea->width());
+        uiCanvasArea->setFixedHeight(uiCanvasArea->height());
     });
     buttonColorLayout->addWidget(buttonZoomOut, 2, 1);
 
